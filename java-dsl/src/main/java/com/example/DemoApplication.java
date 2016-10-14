@@ -36,12 +36,12 @@ public class DemoApplication {
     }
 
     @Bean
-    public IntegrationFlow myFlow() {
+    public IntegrationFlow myFlow(DemoService demoService) {
         return IntegrationFlows
             .from(this.integerMessageSource(), c -> c.poller(Pollers.fixedDelay(1000)))
             .channel(this.inputChannel())
-            .filter((Integer i) -> i > 0)
-            .transform(Object::toString)
+            .filter(demoService::integerFilter)
+            .transform(demoService::convertToString)
             .channel(this.outputChannel())
             .get();
     }
