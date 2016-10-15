@@ -1,0 +1,7 @@
+demo:
+  xmpp:
+    user: your-user
+    password: your-password
+    host: the-host #talk.google.com
+    port: 5222
+    friend: your-friend-user

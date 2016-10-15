@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans:beans xmlns="http://www.springframework.org/schema/integration"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xmlns:beans="http://www.springframework.org/schema/beans"
+             xmlns:xmpp="http://www.springframework.org/schema/integration/xmpp"
+             xsi:schemaLocation="http://www.springframework.org/schema/beans
+             http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
+             http://www.springframework.org/schema/integration
+             http://www.springframework.org/schema/integration/spring-integration.xsd
+             http://www.springframework.org/schema/integration/xmpp
+             http://www.springframework.org/schema/integration/xmpp/spring-integration-xmpp.xsd">
+
+    <!-- XMPP Demo -->
+    <xmpp:xmpp-connection
+            id="xmppConnection"
+            user="${demo.xmpp.user}"
+            password="${demo.xmpp.password}"
+            host="${demo.xmpp.host}"
+            port="${demo.xmpp.port}" />
+
+    <!-- Xmpp: Sent messages to user -->
+    <channel id="sendXmppMessagesChannel"/>
+    <xmpp:outbound-channel-adapter channel="sendXmppMessagesChannel"/>
+
+
+    <!-- Xmpp: Receive messages from user -->
+    <channel id="receiveXmppMessages"/>
+    <xmpp:inbound-channel-adapter channel="receiveXmppMessages"/>
+
+    <!-- Xmpp: Command messages -->
+    <chain input-channel="receiveXmppMessages">
+        <filter expression="payload.startsWith('command ')" discard-channel="chatMessageReceived"/>
+        <transformer ref="xmppService" method="parseCommand"/>
+        <service-activator ref="xmppService" method="executeCommand"/>
+        <service-activator ref="xmppService" method="sendMessage"/>
+    </chain>
+
+    <!-- Xmpp: Normal messages -->
+    <channel id="chatMessageReceived"/>
+    <service-activator input-channel="chatMessageReceived" ref="xmppService" method="chatMessageReceived"/>
+
+
+</beans:beans>
