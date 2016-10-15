@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:int="http://www.springframework.org/schema/integration"
+       xmlns:int-amqp="http://www.springframework.org/schema/integration/amqp"
+       xmlns:rabbit="http://www.springframework.org/schema/rabbit"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+                           http://www.springframework.org/schema/beans/spring-beans.xsd
+                           http://www.springframework.org/schema/integration
+                           http://www.springframework.org/schema/integration/spring-integration.xsd
+                           http://www.springframework.org/schema/integration/amqp
+                           http://www.springframework.org/schema/integration/amqp/spring-integration-amqp.xsd
+                           http://www.springframework.org/schema/rabbit
+                           http://www.springframework.org/schema/rabbit/spring-rabbit.xsd">
+
+
+    <!-- RabbitMQ configuration -->
+    <rabbit:connection-factory
+            id="rabbitConnectionFactory"
+            host="${rabbitmq.host}"
+            port="${rabbitmq.port}"
+            username="${rabbitmq.username}"
+            password="${rabbitmq.password}"
+            publisher-returns="true"/>
+
+    <rabbit:template id="amqpTemplate" connection-factory="rabbitConnectionFactory" />
+    <rabbit:admin connection-factory="rabbitConnectionFactory"/>
+
+
+    <!-- RabbitMQ Exchange configuration -->
+    <rabbit:queue name="demo.reverse"/>
+    <rabbit:queue name="demo.uppercase"/>
+    <rabbit:direct-exchange name="demo.exchange">
+        <rabbit:bindings>
+            <rabbit:binding queue="demo.reverse" key="reverse"></rabbit:binding>
+            <rabbit:binding queue="demo.uppercase" key="uppercase"></rabbit:binding>
+        </rabbit:bindings>
+    </rabbit:direct-exchange>
+
+    <!-- Json serializer/deseralizer -->
+    <bean id="jsonDeserializer" class="com.example.common.JsonDeserializer" />
+
+
+    <!-- RabbitMQ => Consumer -->
+    <int-amqp:inbound-channel-adapter concurrent-consumers="10" mapped-request-headers="*" channel="requestChannel" queue-names="demo.reverse,demo.uppercase" />
+    <int:channel id="requestChannel" />
+
+    <!-- Routing -->
+    <int:chain input-channel="requestChannel">
+        <int:transformer ref="jsonDeserializer" method="fromJson" />
+        <int:header-value-router header-name="routingKey">
+            <int:mapping value="reverse" channel="reverseChannel" />
+            <int:mapping value="uppercase" channel="uppercaseChannel" />
+        </int:header-value-router>
+    </int:chain>
+
+    <!-- Reverse service -->
+    <int:channel id="reverseChannel" />
+    <int:service-activator input-channel="reverseChannel" ref="consumerService" method="reverseMessage" />
+
+    <!-- Uppercase service -->
+    <int:channel id="uppercaseChannel" />
+    <int:service-activator input-channel="uppercaseChannel" ref="consumerService" method="uppercaseMessage" />
+
+
+
+</beans>
